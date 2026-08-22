@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { Logo } from "@/components/site/logo";
 import { NavLinks } from "@/components/site/nav-links";
-import type { NavItem } from "@/components/site/nav-config";
+import type { Role } from "@/lib/supabase/types";
 
-export function MobileNav({ items }: { items: NavItem[] }) {
+export function MobileNav({ role }: { role: Role }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -20,7 +20,7 @@ export function MobileNav({ items }: { items: NavItem[] }) {
       </SheetTrigger>
       <SheetContent>
         <Logo />
-        <NavLinks items={items} onNavigate={() => setOpen(false)} />
+        <NavLinks role={role} onNavigate={() => setOpen(false)} />
       </SheetContent>
     </Sheet>
   );

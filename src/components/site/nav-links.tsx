@@ -3,10 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import type { NavItem } from "@/components/site/nav-config";
+import { navFor } from "@/components/site/nav-config";
+import type { Role } from "@/lib/supabase/types";
 
-export function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }) {
+// Resolves the nav item list (including icon components) entirely on the
+// client from `role` — a plain string is all that's safe to pass down from
+// a Server Component. The icon components themselves can never cross that
+// boundary as props (Next.js rejects non-plain-object values in RSC props).
+export function NavLinks({ role, onNavigate }: { role: Role; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const items = navFor(role);
 
   return (
     <nav className="flex flex-col gap-0.5" aria-label="Primary">
