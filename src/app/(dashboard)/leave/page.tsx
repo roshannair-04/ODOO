@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CalendarClock } from "lucide-react";
 import { requireEmployee } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { ApplyLeaveDialog } from "@/components/leave/apply-leave-dialog";
+import { LeaveApplySection } from "@/components/leave/leave-apply-section";
 import { MyLeaveRequestsTable, type MyLeaveRow } from "@/components/leave/my-leave-requests-table";
 import { LeaveApprovalQueue, type QueueRow } from "@/components/leave/leave-approval-queue";
 import { RealtimeRefresher } from "@/components/site/realtime-refresher";
@@ -60,7 +60,7 @@ export default async function LeavePage() {
             return (
               <Card key={type.id}>
                 <CardContent className="flex flex-col gap-1 pt-5">
-                  <span className="text-xl font-semibold tracking-tight tabular-nums">{available}</span>
+                  <span className="text-headline font-semibold tabular-nums">{available}</span>
                   <span className="text-xs text-muted-foreground">{type.name} remaining</span>
                 </CardContent>
               </Card>
@@ -68,9 +68,9 @@ export default async function LeavePage() {
           })}
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold">My requests</h2>
-        <ApplyLeaveDialog leaveTypes={leaveTypes ?? []} />
+        <LeaveApplySection leaveTypes={leaveTypes ?? []} />
       </div>
 
       <MyLeaveRequestsTable rows={myRows} />
@@ -81,7 +81,7 @@ export default async function LeavePage() {
     return (
       <div className="flex flex-col gap-1">
         <RealtimeRefresher channel={`leave-${employee.id}`} tables={["leave_requests", "leave_balances"]} />
-        <h1 className="text-xl font-semibold tracking-tight">Leave</h1>
+        <h1 className="text-headline font-semibold">Leave</h1>
         <p className="mb-4 text-sm text-muted-foreground">Apply for time off and track approvals.</p>
         {content}
       </div>
@@ -112,7 +112,7 @@ export default async function LeavePage() {
       <RealtimeRefresher channel="leave-admin" tables={["leave_requests", "leave_balances", "attendance"]} />
       <div className="flex items-center gap-2">
         <CalendarClock className="size-5 text-muted-foreground" />
-        <h1 className="text-xl font-semibold tracking-tight">Leave</h1>
+        <h1 className="text-headline font-semibold">Leave</h1>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">Review approvals, and manage your own leave requests.</p>
 

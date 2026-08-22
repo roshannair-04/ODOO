@@ -31,7 +31,7 @@ export default async function ProfilePage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Your profile</h1>
+        <h1 className="text-headline font-semibold">Your profile</h1>
         <p className="text-sm text-muted-foreground">Personal details, job details and your photo.</p>
       </div>
       <EmployeeProfileForm

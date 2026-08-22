@@ -11,7 +11,7 @@ export default function SignUpPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1 text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-balance">Create your account</h1>
+        <h1 className="text-headline font-semibold text-balance">Create your account</h1>
         <p className="text-sm text-muted-foreground text-balance">
           The first person to sign up becomes the workspace admin. Everyone after that joins as an
           employee.

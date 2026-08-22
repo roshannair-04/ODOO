@@ -13,7 +13,7 @@ export default function SignInPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Welcome back</h1>
+        <h1 className="text-headline font-semibold">Welcome back</h1>
         <p className="text-sm text-muted-foreground">Sign in to your Dayflow workspace.</p>
       </div>
       <Suspense fallback={<SignInFormFallback />}>
