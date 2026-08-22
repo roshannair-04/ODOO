@@ -31,7 +31,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Hi {employee.full_name.split(" ")[0]} 👋</h1>
+        <h1 className="text-headline font-semibold">Hi {employee.full_name.split(" ")[0]} 👋</h1>
         <p className="text-sm text-muted-foreground">Here&apos;s your Dayflow at a glance.</p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -71,7 +71,7 @@ async function AdminDashboard({ adminName }: { adminName: string }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Hi {adminName.split(" ")[0]} 👋</h1>
+        <h1 className="text-headline font-semibold">Hi {adminName.split(" ")[0]} 👋</h1>
         <p className="text-sm text-muted-foreground">Here&apos;s what&apos;s happening across the company.</p>
       </div>
 

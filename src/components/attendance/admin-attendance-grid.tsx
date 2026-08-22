@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, UserCheck } from "lucide-react";
 import { toast } from "sonner";
-import { adminCorrectionAction } from "@/app/actions/attendance";
+import { adminCorrectionAction, markAllPresentAction } from "@/app/actions/attendance";
+import { AttendanceCalendar } from "@/components/attendance/attendance-calendar";
 import { Card } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -22,7 +23,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { initials } from "@/lib/utils";
+import { formatDate, initials } from "@/lib/utils";
 import type { AttendanceStatus } from "@/lib/supabase/types";
 
 export interface GridRow {
@@ -62,16 +63,52 @@ function timeValue(iso: string | null) {
 export function AdminAttendanceGrid({ date, rows }: { date: string; rows: GridRow[] }) {
   const router = useRouter();
   const [editing, setEditing] = useState<GridRow | null>(null);
+  const [markingAll, setMarkingAll] = useState(false);
 
   function setDate(next: string) {
     router.push(`/attendance?date=${next}`);
   }
 
+  async function handleMarkAllPresent() {
+    setMarkingAll(true);
+    const result = await markAllPresentAction({ date });
+    setMarkingAll(false);
+    if (result.ok) {
+      toast.success(result.message);
+      router.refresh();
+    } else {
+      toast.error(result.message);
+    }
+  }
+
+  const needsMarking = rows.filter(
+    (row) => !row.attendance || (row.attendance.status !== "present" && row.attendance.status !== "leave")
+  ).length;
+  const canMarkAll = needsMarking > 0;
+
   return (
     <>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">{rows.length} employees</p>
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="sm:w-44" aria-label="Select date" />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-medium">{formatDate(date)}</p>
+            <p className="text-sm text-muted-foreground">
+              {rows.length} employees
+              {needsMarking > 0 ? ` · ${needsMarking} still to mark` : null}
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={handleMarkAllPresent}
+            disabled={markingAll || !canMarkAll}
+            className="w-fit"
+          >
+            <UserCheck />
+            {markingAll ? "Marking…" : "Mark all present"}
+          </Button>
+        </div>
+
+        <AttendanceCalendar date={date} onSelect={setDate} />
       </div>
 
       <Card className="overflow-hidden p-0">

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentEmployee, requireAdmin } from "@/lib/auth";
-import { attendanceCorrectionSchema } from "@/lib/validations/attendance";
+import { attendanceCorrectionSchema, markAllPresentSchema } from "@/lib/validations/attendance";
 import { todayISO } from "@/lib/utils";
 import type { ActionResult } from "@/app/actions/auth";
 
@@ -132,4 +132,59 @@ export async function adminCorrectionAction(input: unknown): Promise<ActionResul
 
   revalidatePath("/attendance");
   return { ok: true, message: "Attendance updated." };
+}
+
+/** Mark every active employee present for a date. Leaves approved leave rows alone. */
+export async function markAllPresentAction(input: unknown): Promise<ActionResult> {
+  await requireAdmin();
+
+  const parsed = markAllPresentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Pick a date." };
+  }
+  const { date } = parsed.data;
+
+  const supabase = await createClient();
+
+  const [{ data: employees, error: employeesError }, { data: existing, error: existingError }] =
+    await Promise.all([
+      supabase.from("employees").select("id").eq("status", "active"),
+      supabase.from("attendance").select("employee_id, status").eq("date", date),
+    ]);
+
+  if (employeesError) return { ok: false, message: employeesError.message };
+  if (existingError) return { ok: false, message: existingError.message };
+
+  const byEmployee = new Map((existing ?? []).map((row) => [row.employee_id, row.status]));
+  const toUpsert = (employees ?? [])
+    .filter((person) => {
+      const status = byEmployee.get(person.id);
+      return status !== "leave" && status !== "present";
+    })
+    .map((person) => ({
+      employee_id: person.id,
+      date,
+      check_in_at: null,
+      check_out_at: null,
+      worked_minutes: null,
+      status: "present" as const,
+      source: "admin" as const,
+      note: "Bulk marked present",
+    }));
+
+  if (toUpsert.length === 0) {
+    return { ok: true, message: "Everyone is already present or on leave for this day." };
+  }
+
+  const { error } = await supabase.from("attendance").upsert(toUpsert, {
+    onConflict: "employee_id,date",
+  });
+
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/attendance");
+  return {
+    ok: true,
+    message: `Marked ${toUpsert.length} employee${toUpsert.length === 1 ? "" : "s"} present.`,
+  };
 }

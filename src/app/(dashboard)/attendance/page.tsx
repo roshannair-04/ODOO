@@ -3,12 +3,16 @@ import { requireEmployee } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CheckInCard } from "@/components/attendance/check-in-card";
 import { AdminAttendanceGrid, type GridRow } from "@/components/attendance/admin-attendance-grid";
+import { AnomalyPanel } from "@/components/attendance/anomaly-panel";
 import { RealtimeRefresher } from "@/components/site/realtime-refresher";
 import { Card } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, todayISO } from "@/lib/utils";
+import { computeAttendanceAnomalies } from "@/lib/attendance-anomalies";
 import type { AttendanceStatus } from "@/lib/supabase/types";
+
+const ANOMALY_WINDOW_DAYS = 30;
 
 export const metadata: Metadata = {
   title: "Attendance",
@@ -68,7 +72,7 @@ async function EmployeeView({ employeeId }: { employeeId: string }) {
     <div className="flex flex-col gap-4">
       <RealtimeRefresher channel={`attendance-${employeeId}`} tables={["attendance"]} />
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Attendance</h1>
+        <h1 className="text-headline font-semibold">Attendance</h1>
         <p className="text-sm text-muted-foreground">Check in, check out, and review your attendance history.</p>
       </div>
 
@@ -127,20 +131,49 @@ async function EmployeeView({ employeeId }: { employeeId: string }) {
 
 async function AdminView({ date }: { date: string }) {
   const supabase = await createClient();
+  const today = todayISO();
+  const windowStart = new Date(Date.UTC(...(today.split("-").map(Number) as [number, number, number])));
+  windowStart.setUTCDate(windowStart.getUTCDate() - (ANOMALY_WINDOW_DAYS - 1));
+  const windowStartISO = windowStart.toISOString().slice(0, 10);
 
-  const [{ data: employees, error: employeesError }, { data: attendanceRows, error: attendanceError }] = await Promise.all([
+  const [
+    { data: employees, error: employeesError },
+    { data: attendanceRows, error: attendanceError },
+    { data: historyRows },
+    { data: holidayRows },
+  ] = await Promise.all([
     supabase
       .from("employees")
-      .select("id, full_name, employee_code, photo_url, status, departments!department_id(name)")
+      .select("id, full_name, employee_code, photo_url, status, date_of_joining, departments!department_id(name)")
       .eq("status", "active")
       .order("full_name"),
     supabase.from("attendance").select("employee_id, status, check_in_at, check_out_at, note").eq("date", date),
+    supabase
+      .from("attendance")
+      .select("employee_id, date, status")
+      .gte("date", windowStartISO)
+      .lte("date", today),
+    supabase.from("holidays").select("date").gte("date", windowStartISO).lte("date", today),
   ]);
 
   if (employeesError) console.error("[AttendanceAdminView] failed to load employees:", employeesError.message);
   if (attendanceError) console.error("[AttendanceAdminView] failed to load attendance:", attendanceError.message);
 
   const attendanceByEmployee = new Map((attendanceRows ?? []).map((row) => [row.employee_id, row]));
+
+  const anomalyRows = computeAttendanceAnomalies({
+    employees: (employees ?? []).map((person) => ({
+      id: person.id,
+      full_name: person.full_name,
+      employee_code: person.employee_code,
+      photo_url: person.photo_url,
+      date_of_joining: person.date_of_joining,
+    })),
+    attendanceRows: historyRows ?? [],
+    holidays: new Set((holidayRows ?? []).map((h) => h.date)),
+    windowEnd: today,
+    windowDays: ANOMALY_WINDOW_DAYS,
+  });
 
   const rows: GridRow[] = (employees ?? []).map((person) => {
     const attendance = attendanceByEmployee.get(person.id);
@@ -165,11 +198,13 @@ async function AdminView({ date }: { date: string }) {
     <div className="flex flex-col gap-4">
       <RealtimeRefresher channel="attendance-admin" tables={["attendance"]} />
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Attendance</h1>
+        <h1 className="text-headline font-semibold">Attendance</h1>
         <p className="text-sm text-muted-foreground">Review and correct attendance across the company.</p>
       </div>
 
       <AdminAttendanceGrid date={date} rows={rows} />
+
+      <AnomalyPanel rows={anomalyRows} windowDays={ANOMALY_WINDOW_DAYS} />
     </div>
   );
 }
