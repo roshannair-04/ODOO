@@ -35,7 +35,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-xl font-semibold">{employee.full_name}</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{employee.full_name}</h1>
         <Badge variant={employee.role === "admin" ? "default" : "secondary"}>{titleCase(employee.role)}</Badge>
         <Badge variant={employee.status === "active" ? "success" : "secondary"}>{titleCase(employee.status)}</Badge>
       </div>

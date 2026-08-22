@@ -37,16 +37,21 @@ export default async function EmployeesPage({
 
   let query = supabase
     .from("employees")
-    .select("id, full_name, email, employee_code, designation, status, photo_url, date_of_joining, department_id, departments(name)", {
-      count: "exact",
-    })
+    .select(
+      "id, full_name, email, employee_code, designation, status, photo_url, date_of_joining, department_id, departments!department_id(name)",
+      { count: "exact" }
+    )
     .order("full_name");
 
   if (q) query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%,employee_code.ilike.%${q}%`);
   if (department) query = query.eq("department_id", department);
   if (status) query = query.eq("status", status);
 
-  const { data: employees, count } = await query.range(from, to);
+  const { data: employees, count, error } = await query.range(from, to);
+
+  if (error) {
+    console.error("[EmployeesPage] failed to load employees:", error.message);
+  }
 
   const totalItems = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
@@ -54,7 +59,7 @@ export default async function EmployeesPage({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-xl font-semibold">Employees</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Employees</h1>
         <p className="text-sm text-muted-foreground">{totalItems} people across {departments?.length ?? 0} departments.</p>
       </div>
 

@@ -1,9 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
-// Deliberately system fonts, not next/font/google: this app should render
-// identically on venue wifi that can't reach Google Fonts. See PROJECT_GUIDE.md.
+// Geist via the `geist` package, not next/font/google: the font files ship
+// inside the package (next/font/local under the hood) so this renders
+// identically on venue wifi that can't reach Google Fonts — no network
+// request either way. See PROJECT_GUIDE.md.
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
@@ -29,14 +33,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2F6D51",
+  themeColor: "#0a0a0b",
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="font-sans antialiased">
         {children}
         <Toaster />

@@ -31,7 +31,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold">Hi {employee.full_name.split(" ")[0]} 👋</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Hi {employee.full_name.split(" ")[0]} 👋</h1>
         <p className="text-sm text-muted-foreground">Here&apos;s your Dayflow at a glance.</p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -55,11 +55,12 @@ export default async function DashboardPage() {
 async function AdminDashboard({ adminName }: { adminName: string }) {
   const supabase = await createClient();
 
-  const [{ count: employeeCount }, { count: activeCount }, { count: departmentCount }, { data: recent }] =
+  const [{ count: employeeCount }, { count: activeCount }, { count: departmentCount }, { count: pendingLeaveCount }, { data: recent }] =
     await Promise.all([
       supabase.from("employees").select("id", { count: "exact", head: true }),
       supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
       supabase.from("departments").select("id", { count: "exact", head: true }),
+      supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
       supabase
         .from("employees")
         .select("id, full_name, email, designation, photo_url, created_at, role")
@@ -70,7 +71,7 @@ async function AdminDashboard({ adminName }: { adminName: string }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold">Hi {adminName.split(" ")[0]} 👋</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Hi {adminName.split(" ")[0]} 👋</h1>
         <p className="text-sm text-muted-foreground">Here&apos;s what&apos;s happening across the company.</p>
       </div>
 
@@ -78,7 +79,12 @@ async function AdminDashboard({ adminName }: { adminName: string }) {
         <StatTile label="Employees" value={employeeCount ?? 0} icon={Users} />
         <StatTile label="Active" value={activeCount ?? 0} icon={UserCheck} />
         <StatTile label="Departments" value={departmentCount ?? 0} icon={Building2} />
-        <StatTile label="Pending leave" value={0} icon={CalendarClock} />
+        <StatTile
+          label="Pending leave"
+          value={pendingLeaveCount ?? 0}
+          icon={CalendarClock}
+          tone={(pendingLeaveCount ?? 0) > 0 ? "warning" : "default"}
+        />
       </div>
 
       <Card>

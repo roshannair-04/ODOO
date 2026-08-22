@@ -13,7 +13,7 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-1">
-      <h1 className="text-xl font-semibold">Analytics</h1>
+      <h1 className="text-xl font-semibold tracking-tight">Analytics</h1>
       <p className="mb-4 text-sm text-muted-foreground">Company-wide attendance and leave trends.</p>
       <ComingSoon
         icon={BarChart3}

@@ -27,7 +27,7 @@ export function StatTile({
           <Icon className="size-4.5" />
         </span>
         <div className="flex flex-col">
-          <span className="text-xl font-semibold leading-tight tabular-nums">{value}</span>
+          <span className="text-xl font-semibold tracking-tight leading-tight tabular-nums">{value}</span>
           <span className="text-xs text-muted-foreground">{label}</span>
         </div>
       </CardContent>

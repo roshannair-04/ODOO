@@ -23,11 +23,70 @@ Tailwind v4 + shadcn-style components**, one repo, no separate backend.
   admins), profile photo upload
 - A seed script that fills the app with a believable 25-person demo company
 
-Attendance, Leave, Payroll and Analytics have nav entries and routes already
-scaffolded (`src/app/(dashboard)/attendance`, `/leave`, `/payroll`,
-`/analytics`) showing a "coming in the next phase" placeholder. That's
-deliberate — the routes exist so nothing 404s, and whoever builds each
-module has a file already waiting for them. See section 7.
+Payroll and Analytics have nav entries and routes already scaffolded
+(`src/app/(dashboard)/payroll`, `/analytics`) showing a "coming in the next
+phase" placeholder. That's deliberate — the routes exist so nothing 404s,
+and whoever builds each module has a file already waiting for them. See
+section 7.
+
+---
+
+## 1b. What phase 2 adds
+
+- **Attendance**: employees check in/out from their own Attendance page
+  (`src/components/attendance/check-in-card.tsx`) — a shift under 4 worked
+  hours is automatically logged as a half day on check-out, not just full
+  present/absent. Admins get a date-picker grid across every active
+  employee with a manual correction dialog (`admin-attendance-grid.tsx`)
+  for backdating or fixing a punch.
+- **Leave**: employees apply for leave against a live balance
+  (`apply-leave-dialog.tsx`), see their own request history with a cancel
+  action while still pending, and admins get an approval queue
+  (`leave-approval-queue.tsx`). Approving, rejecting, cancelling and
+  applying all go through Postgres functions in
+  `supabase/migrations/0004_leave_functions.sql` — **not** plain table
+  writes — because approval has to atomically move the balance from
+  `pending` to `used` *and* write an `attendance` row (status `leave`) for
+  every working day in range, in one transaction. That attendance row is
+  what a future payroll phase reads to compute payable days — leave is
+  never re-entered anywhere else.
+- **Realtime**: the leave approval queue and both attendance views
+  subscribe to Postgres changes (`components/site/realtime-refresher.tsx`)
+  so an approval or a teammate's check-in shows up without a manual
+  refresh.
+- A grants migration (`0003_grants.sql`) fixing a gotcha from phase 1 — see
+  the "Changing the schema" note below if you ever hit `permission denied
+  for table X` despite correct-looking RLS.
+
+---
+
+## 1c. Design system
+
+The app runs one locked dark theme — no light mode, no `dark:` toggle —
+adapted from Linear's product design language: a near-black canvas, a
+single lavender accent (`--primary`, `#5e6ad2`) used only for primary
+actions/links/focus rings, hairline borders instead of drop shadows, and
+Geist (via the `geist` npm package, self-hosted — same offline-resilience
+reasoning as the rest of the stack) as the display and body typeface.
+
+**Everything is a token.** `src/app/globals.css` defines the full palette
+as CSS custom properties (`--background`, `--card`, `--primary`,
+`--success`, `--warning`, `--destructive`, plus a `-soft` variant of each
+semantic color for badge/icon backgrounds) mapped into Tailwind via
+`@theme inline`. No component or page hand-rolls a color, a `gray-500`, or
+a literal hex value — they all consume `bg-card`, `text-muted-foreground`,
+`border-border`, `bg-primary-soft`, etc. **If you need a new color, add a
+token in `globals.css` and reference it by name — never inline a hex value
+in a component.** That discipline is what let this redesign land as a
+CSS-token swap instead of a rewrite, and it's what keeps the next one cheap
+too.
+
+Radius scale: `rounded-sm` 6px, `rounded-md` 8px (buttons, inputs),
+`rounded-lg` 12px (cards, dialogs), `rounded-xl` 16px, `rounded-full` for
+badges/avatars — pick from this scale, don't invent a one-off radius.
+
+Icons stay on `lucide-react` (already used everywhere from phase 1 — not
+worth a library swap mid-hackathon). Don't hand-roll icon SVGs.
 
 ---
 
@@ -167,31 +226,35 @@ src/
       dashboard/         role-aware home (admin sees stats, employee sees quick links)
       employees/          admin-only directory + /[id] profile
       profile/            your own profile (works for both roles)
-      attendance/          ← build here next (placeholder in place)
-      leave/               ← build here next (placeholder in place)
+      attendance/          check-in/out (employee) + correction grid (admin)
+      leave/               apply/cancel (employee) + approval queue (admin)
       payroll/             ← build here next (placeholder in place)
       analytics/           ← build here next, admin-only
-    actions/            Server Actions (auth.ts, employees.ts) — this is
-                        where business logic and writes belong, never in
-                        client components
+    actions/            Server Actions (auth.ts, employees.ts, attendance.ts,
+                        leave.ts) — this is where business logic and writes
+                        belong, never in client components
     auth/callback/      handles the email-verification redirect
   components/
     ui/                 base primitives (button, input, table, dialog, …)
-    site/               app chrome (header, sidebar, footer, nav config)
+    site/               app chrome (header, sidebar, footer, nav config,
+                        realtime-refresher.tsx)
     employees/          Employees-module-specific components
+    attendance/          check-in-card.tsx, admin-attendance-grid.tsx
+    leave/               apply-leave-dialog.tsx, my-leave-requests-table.tsx,
+                        leave-approval-queue.tsx
   lib/
     supabase/           client.ts (browser), server.ts (Server Components/
                         Actions), admin.ts (service-role, server-only),
                         middleware.ts (session refresh + route protection)
     validations/        zod schemas, one file per feature
     auth.ts             getCurrentEmployee / requireEmployee / requireAdmin
-    utils.ts            cn(), formatDate, formatMoney, etc.
+    utils.ts            cn(), formatDate, formatMoney, todayISO, etc.
 supabase/migrations/    the SQL that defines the whole schema — see below
                         before touching the database
 scripts/seed.ts         demo data generator
 ```
 
-### Adding a new module (attendance, leave, payroll, …)
+### Adding a new module (payroll, analytics, …)
 
 1. The route folder and a `ComingSoon` placeholder already exist under
    `src/app/(dashboard)/<module>/page.tsx` — replace the placeholder, don't
@@ -211,11 +274,20 @@ scripts/seed.ts         demo data generator
 
 ### Changing the schema
 
-If a module needs a column or table that isn't in `0001_init.sql`, add a
-new file `supabase/migrations/0003_<name>.sql` rather than editing
-`0001`/`0002` — those have already been run on people's projects. Post in
-the team chat when you add one so everyone re-runs it on their own Supabase
-project (SQL Editor → paste → Run, same as section 4).
+If a module needs a column or table, add a new
+`supabase/migrations/0005_<name>.sql` (the next free number — `0001` is the
+base schema, `0002` storage buckets, `0003` a grants fix, `0004` the leave
+functions) rather than editing an already-applied file. Post in the team
+chat when you add one so everyone re-runs it on their own Supabase project
+(SQL Editor → paste → Run, same as section 4).
+
+**Gotcha, already hit once:** if you apply a migration through an AI tool /
+MCP connection instead of the Supabase dashboard's SQL Editor, Supabase's
+automatic privilege grants for `anon`/`authenticated`/`service_role` can be
+skipped, and you'll see `permission denied for table X` on an otherwise
+correct, RLS-compliant query. `0003_grants.sql` fixes this once for the
+existing tables and future ones (`alter default privileges`); if you add a
+brand-new table the same way, re-run the pattern in that file for it.
 
 ---
 
@@ -267,10 +339,11 @@ incomplete.
 
 ## 10. Roadmap
 
-Phase 1 (this push): scaffold, schema, auth, employees module.
-Next up, roughly in this order: attendance (check-in/out + admin grid),
-leave (apply + approve, wired to write attendance on approval), payroll
-(derived from attendance, with the day-by-day breakdown visible), then
-analytics and polish. Full context on the "why" behind each of these and
-the differentiators worth building lives in the team's war-room doc —
-ask in chat if you don't have the link.
+Phase 1 (shipped): scaffold, schema, auth, employees module.
+Phase 2 (shipped): attendance (check-in/out + admin grid), leave (apply +
+approve, wired to write attendance on approval), realtime on both.
+Next up: payroll (derived from attendance — no re-entering leave or hours,
+with the day-by-day breakdown visible), then analytics and polish. Full
+context on the "why" behind each of these and the differentiators worth
+building lives in the team's war-room doc — ask in chat if you don't have
+the link.

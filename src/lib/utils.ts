@@ -31,3 +31,8 @@ export function formatMoney(value: number) {
 export function titleCase(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/** Today's date as YYYY-MM-DD in the server's local timezone. */
+export function todayISO() {
+  return new Date().toLocaleDateString("en-CA");
+}
