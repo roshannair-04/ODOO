@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Pencil, ChevronDown, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { adminCorrectionAction, markAllPresentAction, markAllPresentForMonthAction } from "@/app/actions/attendance";
+import { AttendanceCalendar } from "@/components/attendance/attendance-calendar";
 import { Card } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -108,17 +109,22 @@ export function AdminAttendanceGrid({ date, rows }: { date: string; rows: GridRo
 
   return (
     <>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">{rows.length} employees</p>
-        <div className="flex gap-2">
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="sm:w-44" aria-label="Select date" />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-medium">{formatDate(date)}</p>
+            <p className="text-sm text-muted-foreground">
+              {rows.length} employees
+              {unmarkedCount > 0 ? ` · ${unmarkedCount} unmarked` : null}
+            </p>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={marking}>
+              <Button variant="outline" disabled={marking} className="w-fit">
                 <UserCheck /> {marking ? "Marking…" : "Mark all present"} <ChevronDown className="size-3.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[15rem]">
+            <DropdownMenuContent align="start" className="min-w-[15rem]">
               <DropdownMenuLabel>Only fills in unmarked employees</DropdownMenuLabel>
               <DropdownMenuItem onSelect={handleMarkAllToday}>
                 This day · {formatDate(date)}
@@ -129,6 +135,8 @@ export function AdminAttendanceGrid({ date, rows }: { date: string; rows: GridRo
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        <AttendanceCalendar date={date} onSelect={setDate} />
       </div>
 
       <Card className="overflow-hidden p-0">

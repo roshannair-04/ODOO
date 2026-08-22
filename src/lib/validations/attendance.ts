@@ -1,9 +1,11 @@
 import { z } from "zod";
 
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date");
+
 // Admin manual correction on an employee's attendance row for a given date.
 export const attendanceCorrectionSchema = z.object({
   employeeId: z.string().uuid(),
-  date: z.string().min(1, "Pick a date"),
+  date: isoDate,
   status: z.enum(["present", "absent", "half_day", "leave"]),
   checkInTime: z.string().optional().or(z.literal("")),
   checkOutTime: z.string().optional().or(z.literal("")),
@@ -14,6 +16,6 @@ export type AttendanceCorrectionInput = z.infer<typeof attendanceCorrectionSchem
 // Bulk "mark all present" for a given day — only fills in employees who
 // don't already have an attendance row for that date.
 export const markAllPresentSchema = z.object({
-  date: z.string().min(1, "Pick a date"),
+  date: isoDate,
 });
 export type MarkAllPresentInput = z.infer<typeof markAllPresentSchema>;
