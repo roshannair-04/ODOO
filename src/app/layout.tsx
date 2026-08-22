@@ -8,7 +8,13 @@ import "./globals.css";
 // inside the package (next/font/local under the hood) so this renders
 // identically on venue wifi that can't reach Google Fonts — no network
 // request either way. See PROJECT_GUIDE.md.
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+//
+// `||`, not `??`: an env var left blank in Vercel's dashboard is stored as
+// an empty string, not left unset, so `??` never catches it — `new URL("")`
+// then throws and takes the whole build down with it (confirmed on the
+// first real Vercel deploy, Aug 22). `||` falls back on any falsy value,
+// including "".
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

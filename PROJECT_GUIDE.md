@@ -38,7 +38,15 @@ section 7.
   hours is automatically logged as a half day on check-out, not just full
   present/absent. Admins get a date-picker grid across every active
   employee with a manual correction dialog (`admin-attendance-grid.tsx`)
-  for backdating or fixing a punch.
+  for backdating or fixing a punch, plus a "Mark all present" dropdown
+  (`markAllPresentAction` / `markAllPresentForMonthAction` in
+  `actions/attendance.ts`) with two options: the selected day, or every
+  working day so far in that month. Both only fill in employees with **no**
+  existing row for the day — check-ins, prior manual corrections, and leave
+  (written by the leave-approval function) are never overwritten, so it's
+  safe to run repeatedly. The monthly option reuses the same
+  later-of-month-start-or-join-date → earlier-of-month-end-or-today window
+  as payroll's day-walk, so it never marks a day that hasn't happened yet.
 - **Leave**: employees apply for leave against a live balance
   (`apply-leave-dialog.tsx`), see their own request history with a cancel
   action while still pending, and admins get an approval queue

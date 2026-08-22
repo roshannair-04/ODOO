@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, ChevronDown, UserCheck } from "lucide-react";
 import { toast } from "sonner";
-import { adminCorrectionAction } from "@/app/actions/attendance";
+import { adminCorrectionAction, markAllPresentAction, markAllPresentForMonthAction } from "@/app/actions/attendance";
 import { Card } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -22,8 +22,18 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { initials } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { initials, formatDate } from "@/lib/utils";
 import type { AttendanceStatus } from "@/lib/supabase/types";
+
+const MONTH_LABEL = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" });
 
 export interface GridRow {
   employeeId: string;
@@ -62,16 +72,63 @@ function timeValue(iso: string | null) {
 export function AdminAttendanceGrid({ date, rows }: { date: string; rows: GridRow[] }) {
   const router = useRouter();
   const [editing, setEditing] = useState<GridRow | null>(null);
+  const [marking, setMarking] = useState(false);
 
   function setDate(next: string) {
     router.push(`/attendance?date=${next}`);
+  }
+
+  const [year, month] = date.split("-").map(Number);
+  const monthLabel = MONTH_LABEL.format(new Date(Date.UTC(year, month - 1, 1)));
+  const unmarkedCount = rows.filter((row) => !row.attendance).length;
+
+  async function handleMarkAllToday() {
+    setMarking(true);
+    const result = await markAllPresentAction({ date });
+    setMarking(false);
+    if (result.ok) {
+      toast.success(result.message);
+      router.refresh();
+    } else {
+      toast.error(result.message);
+    }
+  }
+
+  async function handleMarkAllMonth() {
+    setMarking(true);
+    const result = await markAllPresentForMonthAction({ month, year });
+    setMarking(false);
+    if (result.ok) {
+      toast.success(result.message);
+      router.refresh();
+    } else {
+      toast.error(result.message);
+    }
   }
 
   return (
     <>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">{rows.length} employees</p>
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="sm:w-44" aria-label="Select date" />
+        <div className="flex gap-2">
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="sm:w-44" aria-label="Select date" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={marking}>
+                <UserCheck /> {marking ? "Marking…" : "Mark all present"} <ChevronDown className="size-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[15rem]">
+              <DropdownMenuLabel>Only fills in unmarked employees</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={handleMarkAllToday}>
+                This day · {formatDate(date)}
+                {unmarkedCount > 0 && <span className="ml-auto text-xs text-muted-foreground">{unmarkedCount} unmarked</span>}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleMarkAllMonth}>This month · {monthLabel}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <Card className="overflow-hidden p-0">
